@@ -66,7 +66,7 @@ class  Game(mesa.Model):
         for  _  in  range(n_player):
             self.schedule.add(Player(random.random()  *  300,  random.random()  *  600,  25 , False, uuid.uuid1(), self))    
         for  _  in  range(n_ball):
-            self.schedule.add(Ball(random.random()  *  300,  random.random()  *  600,  25 , uuid.uuid1(), self))    
+            self.schedule.add(Ball(random.random()  *  300,  random.random()  *  600,  5 , uuid.uuid1(), self))    
          
         
         self.datacollector = DataCollector(model_reporters={
@@ -141,7 +141,7 @@ def run_single_server():
                          data_collector_name= 'datacollector',canvas_height=200,canvas_width=500)
 
     s_player = UserSettableParameter("slider","nb_of_players", 6, 0, 10, 1)
-    s_ball = UserSettableParameter("slider","nb_of_players", 1, 1, 10, 1)
+    s_ball = UserSettableParameter("slider","nb_of_balls", 1, 1, 10, 1)
 
 
 
