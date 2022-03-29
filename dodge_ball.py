@@ -70,8 +70,8 @@ class  Game(mesa.Model):
          
         
         self.datacollector = DataCollector(model_reporters={
-            "team1": [lambda x: sum([1 for player in x.schedule.agent_buffer() if not player.team]),[self]],
-            "team2": [lambda x: sum([1 for player in x.schedule.agent_buffer() if player.team]),[self]]})
+            "team1": [lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team]),[self]],
+            "team2": [lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team]),[self]]})
         
     def step(self):
         self.schedule.step()
@@ -88,6 +88,7 @@ class Player(mesa.Agent):
         self.model = model
         self.team = team
         self.facing = math.pi/2
+        self.is_player = True
         
         self.size = 7.5
         
@@ -122,6 +123,8 @@ class Ball(mesa.Agent):
         self.width = width
         self.is_player = False
         self.is_taken = False
+        self.is_player = False
+
 
     
     def portrayal_method(self):
