@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 class ContinuousCanvas(VisualizationElement):
     local_includes = [
         "./js/simple_continuous_canvas.js",
-    ]
+    ] 
 
     def __init__(self, canvas_height=500,
                  canvas_width=500, instantiate=True):
