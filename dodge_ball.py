@@ -57,15 +57,16 @@ def wander(x, y, r, speed, model,team):
     return np.array([new_x, new_y]),r
 
 class  Game(mesa.Model):
-    def  __init__(self,  n_player):
+    def  __init__(self,  n_player, n_ball):
         mesa.Model.__init__(self)
         self.space = mesa.space.ContinuousSpace(600, 600, False)
         self.schedule = RandomActivation(self)
         for  _  in  range(n_player):
-            self.schedule.add(Villager(random.random()  *  300 + 300,  random.random()  *  600,  25 , True, uuid.uuid1(), self))
+            self.schedule.add(Player(random.random()  *  300 + 300,  random.random()  *  600,  25 , True, uuid.uuid1(), self))
         for  _  in  range(n_player):
-            self.schedule.add(Villager(random.random()  *  300,  random.random()  *  600,  25 , False, uuid.uuid1(), self))    
-        
+            self.schedule.add(Player(random.random()  *  300,  random.random()  *  600,  25 , False, uuid.uuid1(), self))    
+        for  _  in  range(n_ball):
+            self.schedule.add(Ball(random.random()  *  300,  random.random()  *  600,  25 , uuid.uuid1(), self))    
          
         
         self.datacollector = DataCollector(model_reporters={
@@ -78,7 +79,7 @@ class  Game(mesa.Model):
         if self.schedule.steps >= 1000:
             self.running = False
 
-class Villager(mesa.Agent):
+class Player(mesa.Agent):
     def __init__(self, x, y, speed, team,unique_id: int, model: Game):
         super().__init__(unique_id, model)
         self.pos = np.array([x, y])
@@ -113,6 +114,25 @@ class Villager(mesa.Agent):
         
         self.speed = self.initial_speed*math.exp(-self.model.schedule.steps/200)
         
+class Ball(mesa.Agent):
+    def __init__(self, x, y, width, unique_id, model):
+        super().__init__(unique_id, model)
+        self.pos = (x, y)
+        self.model = model
+        self.width = width
+        self.is_player = False
+        self.is_taken = False
+
+    
+    def portrayal_method(self):
+        color = "black"
+        
+        portrayal = {"Shape": "circle",
+                     "Filled": "true",
+                     "Layer": 1,
+                     "Color": color,
+                     "r": self.width}
+        return portrayal
         
 def run_single_server():
     
@@ -121,25 +141,27 @@ def run_single_server():
                          data_collector_name= 'datacollector',canvas_height=200,canvas_width=500)
 
     s_player = UserSettableParameter("slider","nb_of_players", 6, 0, 10, 1)
+    s_ball = UserSettableParameter("slider","nb_of_players", 1, 1, 10, 1)
 
 
-    server  =  ModularServer(Game, [ContinuousCanvas(),chart],"Game",{"n_player": s_player})
+
+    server  =  ModularServer(Game, [ContinuousCanvas(),chart],"Game",{"n_player": s_player, "n_ball": s_ball})
     server.port = 8521 
     server.launch()  
 
 
-def run_batch():
+# def run_batch():
     
     
-    batchrunner = BatchRunner(Village, {'n_villagers': [50],"n_werewolves" : [5],"n_cleric" : list(range(0,6,1)),'n_hunter' : [1]},
-                       model_reporters={"nb_of_villagers": lambda x: sum([1 for villager in x.schedule.agent_buffer() if not villager.iswerewolf]),
-                                        "nb_of_werewolves": lambda x: sum([1 for villager in x.schedule.agent_buffer() if villager.iswerewolf and not villager.istransformed] ), 
-                                        "nb_of_transformed_werewolves": lambda x: sum([1 for villager in x.schedule.agent_buffer() if villager.iswerewolf and villager.istransformed] ), 
-                                        "nb_of_characters": lambda x: sum([1 for villager in x.schedule.agent_buffer()] )})
+#     batchrunner = BatchRunner(Village, {'n_villagers': [50],"n_werewolves" : [5],"n_cleric" : list(range(0,6,1)),'n_hunter' : [1]},
+#                        model_reporters={"nb_of_villagers": lambda x: sum([1 for villager in x.schedule.agent_buffer() if not villager.iswerewolf]),
+#                                         "nb_of_werewolves": lambda x: sum([1 for villager in x.schedule.agent_buffer() if villager.iswerewolf and not villager.istransformed] ), 
+#                                         "nb_of_transformed_werewolves": lambda x: sum([1 for villager in x.schedule.agent_buffer() if villager.iswerewolf and villager.istransformed] ), 
+#                                         "nb_of_characters": lambda x: sum([1 for villager in x.schedule.agent_buffer()] )})
     
-    batchrunner.run_all()
-    df = batchrunner.get_model_vars_dataframe()
-    return df
+#     batchrunner.run_all()
+#     df = batchrunner.get_model_vars_dataframe()
+#     return df
     
 
 if  __name__  ==  "__main__":
