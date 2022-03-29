@@ -62,11 +62,11 @@ class  Game(mesa.Model):
         self.space = mesa.space.ContinuousSpace(600, 600, False)
         self.schedule = RandomActivation(self)
         for  _  in  range(n_player):
-            self.schedule.add(Player(random.random()  *  300 + 300,  random.random()  *  600,  25 , True, uuid.uuid1(), self))
+            self.schedule.add(Player(random.random()  *  300 + 300,  random.random()  *  600,  25, True,  10, 0.75, 0.75, uuid.uuid1(), self))
         for  _  in  range(n_player):
-            self.schedule.add(Player(random.random()  *  300,  random.random()  *  600,  25 , False, uuid.uuid1(), self))    
+            self.schedule.add(Player(random.random()  *  300,  random.random()  *  600,  25, False, 10, 0.75, 0.75, uuid.uuid1(), self))    
         for  _  in  range(n_ball):
-            self.schedule.add(Ball(random.random()  *  300,  random.random()  *  600,  5 , uuid.uuid1(), self))    
+            self.schedule.add(Ball(random.random()  *  300,  random.random()  *  600,  5 , 0, uuid.uuid1(), self))    
          
         
         self.datacollector = DataCollector(model_reporters={
@@ -80,16 +80,22 @@ class  Game(mesa.Model):
             self.running = False
 
 class Player(mesa.Agent):
-    def __init__(self, x, y, speed, team,unique_id: int, model: Game):
+    def __init__(self, x, y, speed, team,strength,precision, caught, unique_id: int, model: Game):
         super().__init__(unique_id, model)
         self.pos = np.array([x, y])
-        self.initial_speed= speed
+        self.initial_speed = speed
         self.speed = speed
         self.model = model
         self.team = team
         self.facing = math.pi/2
         self.is_player = True
-        
+
+        self.strength = strength
+        self.precision = precision
+        self.touched = False
+        self.caught = caught 
+        self.has_ball = False
+
         self.size = 7.5
         
     def portrayal_method(self):
@@ -116,15 +122,17 @@ class Player(mesa.Agent):
         self.speed = self.initial_speed*math.exp(-self.model.schedule.steps/200)
         
 class Ball(mesa.Agent):
-    def __init__(self, x, y, width, unique_id, model):
+    def __init__(self, x, y, width, speed, unique_id, model):
         super().__init__(unique_id, model)
-        self.pos = (x, y)
+        self.pos = np.array([x,y])
         self.model = model
         self.width = width
         self.is_player = False
         self.is_taken = False
-        self.is_player = False
-
+        self.on_ground = False
+        self.speed = speed
+        self.destination = None
+        
 
     
     def portrayal_method(self):
