@@ -61,10 +61,19 @@ class  Game(mesa.Model):
         mesa.Model.__init__(self)
         self.space = mesa.space.ContinuousSpace(600, 600, False)
         self.schedule = RandomActivation(self)
-        for  _  in  range(n_player):
-            self.schedule.add(Player(random.random()  *  300 + 300,  random.random()  *  600,  25, True,  10, 0.75, 0.75, uuid.uuid1(), self))
-        for  _  in  range(n_player):
-            self.schedule.add(Player(random.random()  *  300,  random.random()  *  600,  25, False, 10, 0.75, 0.75, uuid.uuid1(), self))    
+
+        team1, team2 = create_team(n_player)
+        print("team 1 : player | speed | strenght | precision | caught | " )
+        for  i  in  range(n_player):
+            speed, strength, precision,caught = team1[i]
+            speed = speed * 90 + 10
+            self.schedule.add(Player(x=random.random() * 300 + 300,  y=random.random()  *  600,  speed=speed, team=True,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
+            print("team 1 player : ",i,speed,strength,precision,caught)
+        for  i  in  range(n_player):
+            speed, strength, precision,caught = team2[i]
+            speed = speed * 90 + 10
+            self.schedule.add(Player(x=random.random() * 300 + 300,  y=random.random()  *  600,  speed=speed, team=False,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
+            print("team 2 player : ",i,speed,strength,precision,caught)
         for  _  in  range(n_ball):
             self.schedule.add(Ball(random.random()  *  300,  random.random()  *  600,  5 , 0, uuid.uuid1(), self))    
          
@@ -73,11 +82,62 @@ class  Game(mesa.Model):
             "team1": [lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team]),[self]],
             "team2": [lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team]),[self]]})
         
+
+
+
     def step(self):
         self.schedule.step()
         self.datacollector.collect(self)
         if self.schedule.steps >= 1000:
             self.running = False
+
+
+def move(x, y, speed, angle):
+    return x + speed * math.cos(angle), y + speed * math.sin(angle)
+
+
+def go_to(x, y, speed, dest_x, dest_y):
+    if np.linalg.norm((x - dest_x, y - dest_y)) < speed:
+        return (dest_x, dest_y), 2 * math.pi * random.random()
+    else:
+        angle = math.acos((dest_x - x)/np.linalg.norm((x - dest_x, y - dest_y)))
+        if dest_y < y:
+            angle = - angle
+        return move(x, y, speed, angle), angle
+
+
+
+
+def create_team(n_player):
+    """
+    Create a team of n_player players with fair distribution of the team using softmax function
+
+    Args:
+        n_player (int): number of players in the team
+
+    Returns:
+        array: array of players with their skills
+    """
+    n_team = 2
+    attribute = ['speed', 'strength', 'precision','caught']
+    team_1 = []
+    team_2 = []
+    n_player = 6
+    n = len(attribute)
+    for i in range(n_team):
+        for j in range(n_player):
+            skill_list = []
+            for k in range(n):
+                skill =  random.random() * 10
+                skill_list.append(skill)
+            if i==0:
+                team_1.append(skill_list)
+            else:
+                team_2.append(skill_list)
+
+    team_1_array = np.array(team_1)
+    team_2_array = np.array(team_2)
+    return np.exp(team_1_array) / np.sum(np.exp(team_1_array), axis=0), np.exp(team_2_array) / np.sum(np.exp(team_2_array), axis=0)
 
 class Player(mesa.Agent):
     def __init__(self, x, y, speed, team,strength,precision, caught, unique_id: int, model: Game):
