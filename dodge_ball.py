@@ -66,18 +66,18 @@ class  Game(mesa.Model):
         print("team 1: player |speed|strength|precision|caught| " )
         for  i  in  range(n_player):
             speed, strength, precision,caught = team1[i]
-            speed = speed * 25 + 10
+            speed = speed * 20 + 10
             strength = strength * 15 + 40
             self.schedule.add(Player(x=random.random() * 300 + 300,  y=random.random()  *  600,  speed=speed, team=True,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
             print("team 1 player : ", i + 1," {:.2f}".format(speed)," {:.2f}".format(strength)," {:.2f}".format(precision)," {:.2f}".format(caught))
         for  i  in  range(n_player):
             speed, strength, precision,caught = team2[i]
-            speed = speed * 25 + 10
+            speed = speed * 20 + 10
             strength = strength * 15 + 40
             self.schedule.add(Player(x=random.random() * 300,  y=random.random()  *  600,  speed=speed, team=False,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
             print("team 2 player : ", i + 1," {:.2f}".format(speed)," {:.2f}".format(strength)," {:.2f}".format(precision)," {:.2f}".format(caught))            
         for  _  in  range(n_ball):
-            self.schedule.add(Ball(random.random()  *  300,  random.random()  *  300,  5 , 0, random.random()<0.5 ,uuid.uuid1(), self))    
+            self.schedule.add(Ball(random.random()  *  300,  random.random()  *  300,  5 , 0, True ,uuid.uuid1(), self))    
          
         
         self.datacollector = DataCollector(model_reporters={
@@ -186,11 +186,11 @@ class Player(mesa.Agent):
 
 
         elif self.has_ball : 
+            r=random.random()*2*math.pi
+            precision_error=(1-self.precision)*17.5*np.array([np.cos(r),np.sin(r)])
 
-            u=random.choice([player for player in self.model.schedule.agent_buffer() if player.team!=self.team]).pos-self.pos
+            u=random.choice([player for player in self.model.schedule.agent_buffer() if player.team!=self.team and player.is_player]).pos-self.pos+precision_error
             d=np.linalg.norm(u)
-
-
 
             self.can_get_ball = False
             self.ball.direction=u/d
@@ -198,15 +198,15 @@ class Player(mesa.Agent):
             self.ball.on_ground = False
             self.has_ball=False
             self.ball.thrower_team=self.team
-            
+            self.ball.is_getting_picked = False
 
         else: 
             self.pos,self.facing= wander(self.pos[0], self.pos[1], self.facing ,self.speed, self.model, self.team)
             
-            [setattr(self,"pos",self.pos+(2.1)*self.size*(self.pos - player.pos)/np.linalg.norm(self.pos - player.pos)) for player in self.model.schedule.agent_buffer() if np.linalg.norm(self.pos - player.pos)  < 16 and player != self ]
+            [setattr(self,"pos",self.pos+(2.1)*self.size*(self.pos - player.pos)/np.linalg.norm(self.pos - player.pos)) for player in self.model.schedule.agent_buffer() if np.linalg.norm(self.pos - player.pos)  < 16 and player.is_player and player!=self ]
         
 
-        self.speed = self.initial_speed*math.exp(-self.model.schedule.steps/200)
+        self.speed = self.initial_speed*math.exp(-self.model.schedule.steps/450)
         
 class Ball(mesa.Agent):
     def __init__(self, x, y, width, speed, team ,unique_id, model):
@@ -220,7 +220,7 @@ class Ball(mesa.Agent):
         self.speed = speed
         self.direction = None
         self.thrower_team = None
-
+        self.is_getting_picked = False
     
     def portrayal_method(self):
         color = "black"
@@ -239,7 +239,7 @@ class Ball(mesa.Agent):
         if self.speed<5:
             self.on_ground = True
             self.speed = 0
-            
+            self.is_getting_picked=False
             if self.pos[0]<300:
                 
                 self.team = False
@@ -255,25 +255,28 @@ class Ball(mesa.Agent):
         if (self.pos<0).any() or (self.pos>600).any():
 
             self.team = not self.team
-            new_thrower=random.choice([player for player in self.model.schedule.agent_buffer() if player.team==self.team and player!=self])
+            new_thrower=random.choice([player for player in self.model.schedule.agent_buffer() if player.team==self.team and player.is_player])
             setattr(new_thrower,"ball",self)
             setattr(new_thrower,"has_ball",True)
             self.pos=new_thrower.pos
+            self.thrower_team = self.team 
+            self.speed = 0
 
-        if self.on_ground:
+        if self.on_ground and not self.is_getting_picked:
 
-            player_distance=[[np.linalg.norm(player.pos-self.pos),player] for player in self.model.schedule.agent_buffer() if player.team==self.team and player!=self]
+            player_distance=[[np.linalg.norm(player.pos-self.pos),player] for player in self.model.schedule.agent_buffer() if player.team==self.team and player.is_player]
             closest_player=min(player_distance,key=lambda x : x[0])[1]
             setattr(closest_player,"can_get_ball",True)
             setattr(closest_player,"ball_pos",self.pos)
             setattr(closest_player,"ball",self)
+            self.is_getting_picked=True
 
-
-        if np.array([np.linalg.norm(self.pos-player.pos)<player.size+self.width for player in self.model.schedule.agent_buffer() if player!=self]).any() and not self.on_ground:
+        if np.array([np.linalg.norm(self.pos-player.pos)<player.size+self.width for player in self.model.schedule.agent_buffer() if player.is_player]).any() and not self.on_ground:
         
             self.speed=0
             self.on_ground=True
-            player_hit=[player for player in self.model.schedule.agent_buffer() if player!=self and np.linalg.norm(self.pos-player.pos)<player.size+self.width][0]
+            self.is_getting_picked=False
+            player_hit=[player for player in self.model.schedule.agent_buffer() if player.is_player and np.linalg.norm(self.pos-player.pos)<player.size+self.width][0]
             if player_hit.team!=self.thrower_team:
                 self.model.schedule.remove(player_hit)
         
