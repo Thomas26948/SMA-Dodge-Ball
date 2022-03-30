@@ -47,6 +47,20 @@ class ContinuousCanvas(VisualizationElement):
         return representation
 
 def wander(x, y, r, speed, model,team):
+    """
+    Let a agent wander around the environment
+
+    Args:
+        x (int): x coordinate of the agent
+        y (int): y coordinate of the agent
+        r (int): 
+        speed (int): speed of the agent
+        model (model): model of the environment
+        team (bool): team of the agent
+
+    Returns:
+        array: new position of the agent 
+    """
     
     margin=20
     
@@ -57,17 +71,14 @@ def wander(x, y, r, speed, model,team):
     return np.array([new_x, new_y]),r
 
 class  Game(mesa.Model):
-    def  __init__(self,  n_player):
+    def  __init__(self,  n_player, param1=None, param2=None):
         mesa.Model.__init__(self)
         self.space = mesa.space.ContinuousSpace(600, 600, False)
         self.schedule = RandomActivation(self)
 
         team1, team2 = create_team(n_player)
-        self.team1 = team1
-        
-
-        self.team2 = team2
-        self.team1 = create_best_team(n_player)
+        # team1 = create_best_team(n_player)
+        # team1, team2 = create_team_benchmark(n_player, param1, param2,'strength','speed')
 
         team1[:,0] = team1[:,0] * 20 + 10
         team2[:,0] = team2[:,0] * 20 + 10
@@ -76,7 +87,8 @@ class  Game(mesa.Model):
         team1[:,3] = np.minimum(team1[:,3], 1)
         team2[:,3] = np.minimum(team2[:,3], 1)
 
-        self.team1, self.team2 = team1, team2
+        self.team1 = team1
+        self.team2 = team2
         print("team : player :   |speed  |  strength  |  precision  |  caught  | " )
         for  i  in  range(n_player):
             speed, strength, precision,caught = self.team1[i]
@@ -126,7 +138,7 @@ def create_best_team(n_player):
     for j in range(n_player):
             skill_list = []
             for k in range(n):
-                skill =  0.5 #In a gaussian distribution, it corresponds to the top 1% of the distribution
+                skill =  1.5 #In a gaussian distribution, it corresponds to the top 1% of the distribution
                 skill_list.append(skill)
             team.append(skill_list)
 
@@ -163,9 +175,59 @@ def create_team(n_player):
     team_2_array = np.array(team_2)
     return np.exp(team_1_array +np.random.random(4)) / np.sum(np.exp(team_1_array), axis=0), np.exp(team_2_array+np.random.random(4)) / np.sum(np.exp(team_2_array), axis=0)
 
+def create_team_benchmark(n_player, param1, param2, skill_type1, skill_type2):
+    """
+    create a team of n_player players while setting parameters 1 and 2 and choosing the rest randomly
+
+    Args:
+        n_player (int): number of players in the team
+        param1 (int): value of the first parameter 
+        param2 (int): value of the second parameter 
+        skill_type1 (str): name of the first parameter 
+        skill_type2 (str): name of the second parameter
+
+    Returns:
+        tuple: return two teams  
+    """
+    n_team = 2
+    attribute = ['speed', 'strength', 'precision','caught']
+    team_1 = []
+    team_2 = []
+    n_player = 6
+    n = len(attribute)
+    idx1 = attribute.index(skill_type1)
+    idx2 = attribute.index(skill_type2)
+    for i in range(n_team):
+        for j in range(n_player):
+            skill_list = []
+            for k in range(n):
+                skill =  np.random.normal()
+                skill_list.append(skill)
+            if i==0:
+                skill_list[idx1] = param1
+                team_1.append(skill_list)
+            else:
+                skill_list[idx2] = param2
+                team_2.append(skill_list)
+
+    team_1_array = np.array(team_1)
+    team_2_array = np.array(team_2)
+    return np.exp(team_1_array +np.random.random(4)) / np.sum(np.exp(team_1_array), axis=0), np.exp(team_2_array+np.random.random(4)) / np.sum(np.exp(team_2_array), axis=0)
+
 
 def dist_seg(P,A,B,direction):
+    """
+    Compute the distance between a point P and a segment AB
 
+    Args:
+        P (array): point
+        A (array): point
+        B (array): point
+        direction (int): angle
+
+    Returns:
+        float: distance between the point and the segment
+    """
     BH=np.dot(A-B,direction)*direction
     PB=B-P
     PA=A-P
@@ -176,6 +238,20 @@ def dist_seg(P,A,B,direction):
 
 class Player(mesa.Agent):
     def __init__(self, x, y, speed, team,strength, precision, caught, unique_id: int, model: Game):
+        """
+        Class of the players of dodgeball
+
+        Args:
+            x (int): x coordinate of the player
+            y (int): y coordinate of the player
+            speed (float): speed of the player
+            team (bool): team of the player
+            strength (float): strength of the player 
+            precision (float): precision of the player
+            caught (float): probability to catch a ball
+            unique_id (int): unique id of the player 
+            model (Game): model of the game
+        """
         super().__init__(unique_id, model)
         self.pos = np.array([x, y])
         self.initial_speed = speed
@@ -215,7 +291,7 @@ class Player(mesa.Agent):
     def step(self):
         
         if self.can_get_ball:
-            
+            # if the player can get the ball, he will get it
             u=self.ball.pos-self.pos
             d=np.linalg.norm(u)
             if d<self.speed:
@@ -229,6 +305,7 @@ class Player(mesa.Agent):
 
 
         elif self.has_ball : 
+            # if the player has the ball, he will throw the ball
             r=random.random()*2*math.pi
             precision_error=(1-self.precision)*17.5*np.array([np.cos(r),np.sin(r)])
 
@@ -245,6 +322,7 @@ class Player(mesa.Agent):
             self.ball.thrower=self
 
         else: 
+            # if the player doesn't have the ball, he will move
             self.pos,self.facing= wander(self.pos[0], self.pos[1], self.facing ,self.speed, self.model, self.team)
             [setattr(self,"pos",self.pos+(2.1)*self.size*(self.pos - player.pos)/np.linalg.norm(self.pos - player.pos)) for player in self.model.schedule.agent_buffer() if np.linalg.norm(self.pos - player.pos)  < 16 and player.is_player and player!=self ]
 
@@ -253,6 +331,18 @@ class Player(mesa.Agent):
         
 class Ball(mesa.Agent):
     def __init__(self, x, y, width, speed, team ,unique_id, model):
+        """
+        Class of the ball of dodgeball
+
+        Args:
+            x (int): x coordinate of the ball
+            y (int): y coordinate of the ball
+            width (int): width of the ball
+            speed (float): speed of the ball
+            team (bool): team of the ball
+            unique_id (int): unique id of the ball
+            model (class): model of the game
+        """
         super().__init__(unique_id, model)
         self.pos = np.array([x+300*team,y])
         self.previous_pos = np.array([x+300*team,y])
@@ -281,6 +371,8 @@ class Ball(mesa.Agent):
         
         
         if self.speed<5:
+            # if the ball is stopped, it is set as on the ground and it can be picked
+            # by player in the corresponding playground
             self.on_ground = True
             self.speed = 0
             self.is_getting_picked=False
@@ -291,13 +383,14 @@ class Ball(mesa.Agent):
                 self.team = True
         
         else :
+            # if the ball is moving, it is moving in the direction of the speed
             self.previous_pos = self.pos
             self.pos=self.pos+self.speed*self.direction
             self.speed = self.speed * 0.9
 
 
         if (self.pos<0).any() or (self.pos>600).any():
-
+            # if the ball is out of the playground, it reappears in the playground
             self.team = not self.team
             new_thrower=random.choice([player for player in self.model.schedule.agent_buffer() if player.team==self.team and player.is_player])
             setattr(new_thrower,"ball",self)
@@ -307,7 +400,7 @@ class Ball(mesa.Agent):
             self.speed = 0
 
         if self.on_ground and not self.is_getting_picked:
-
+            # if the ball is on the ground, it can be picked by the closest player 
             player_distance=[[np.linalg.norm(player.pos-self.pos),player] for player in self.model.schedule.agent_buffer() if player.team==self.team and player.is_player]
             closest_player=min(player_distance,key=lambda x : x[0])[1]
             setattr(closest_player,"can_get_ball",True)
@@ -315,6 +408,7 @@ class Ball(mesa.Agent):
             setattr(closest_player,"ball",self)
             self.is_getting_picked=True
         if not self.on_ground:
+
             if np.array([dist_seg(player.pos,self.previous_pos,self.pos,self.direction)<player.size+self.width for player in self.model.schedule.agent_buffer() if player.is_player and player!=self.thrower]).any():
             
                 
@@ -332,6 +426,9 @@ class Ball(mesa.Agent):
                 self.speed=0
 
 def run_single_server():
+    """
+    Function to run the model in a single server
+    """
     
     chart = ChartModule([{"Label": "team1", "Color": "blue"},
                          {"Label": "team2", "Color": "red"},],
@@ -346,19 +443,35 @@ def run_single_server():
     server.launch()  
 
 def plot(title,xlabel,ylabel,winner, loser):
+    """
+    Function to plot the results of the model
+
+    Args:
+        title (str): title of the plot
+        xlabel (str): label of the x axis
+        ylabel (str): label of the y axis
+        winner (list): stats about the team that won the game
+        loser (list): stats about the team that lost the game
+    """
     fig, ax = plt.subplots()
     ax.set_title(title)
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    plt.plot(winner, label="Winner")
-    plt.plot(loser, label="Loser")
+    plt.scatter(range(len(winner)), winner , label="Winner")
+    plt.scatter(range(len(loser)), loser, label="Loser")
     plt.legend()
     plt.show()
 
 
 def run_batch():
+    """
+    Function to run the model in a batch, to compare the different parameters
+
+    Returns:
+        dataframe: dataframe containing the results of the model
+    """
     
-    n_simulation = 10
+    n_simulation = 100
     batchrunner = BatchRunner(Game, {'n_player': n_simulation * [6]},
                        model_reporters={"nb_of_players_team_1": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched ]),
                                         "nb_of_players_team_2": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched] ), 
