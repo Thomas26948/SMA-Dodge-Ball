@@ -2,3 +2,5 @@ mesa
 numpy
 tornado
 pandas
+sklearn
+matplotlib
