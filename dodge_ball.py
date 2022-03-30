@@ -71,12 +71,15 @@ class  Game(mesa.Model):
             speed, strength, precision,caught = self.team1[i]
             speed = speed * 20 + 10
             strength = strength * 15 + 40
+            caught=min(caught,1)
             self.schedule.add(Player(x=random.random() * 300 + 300,  y=random.random()  *  600,  speed=speed, team=True,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
             print("team 1 player : ", i + 1," {:.2f}".format(speed),"     {:.2f}".format(strength),"       {:.2f}".format(precision),"         {:.2f}".format(caught))
         for  i  in  range(n_player):
             speed, strength, precision,caught = self.team2[i]
             speed = speed * 20 + 10
             strength = strength * 15 + 40
+            caught=min(caught,1)
+
             self.schedule.add(Player(x=random.random() * 300,  y=random.random()  *  600,  speed=speed, team=False,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
             print("team 2 player : ", i + 1," {:.2f}".format(speed),"     {:.2f}".format(strength),"       {:.2f}".format(precision),"         {:.2f}".format(caught))
             
@@ -130,7 +133,8 @@ def create_team(n_player):
     Create a team of n_player players with fair distribution of the team using softmax function
     Args:
         n_player (int): number of players in the team
-    Returns:
+        Returns:
+
         array: array of players with their skills
     """
     n_team = 2
@@ -240,12 +244,13 @@ class Player(mesa.Agent):
             [setattr(self,"pos",self.pos+(2.1)*self.size*(self.pos - player.pos)/np.linalg.norm(self.pos - player.pos)) for player in self.model.schedule.agent_buffer() if np.linalg.norm(self.pos - player.pos)  < 16 and player.is_player and player!=self ]
 
 
-        self.speed = self.initial_speed*math.exp(-self.model.schedule.steps/450)
+        self.speed = self.initial_speed*math.exp(-self.model.schedule.steps/400)
         
 class Ball(mesa.Agent):
     def __init__(self, x, y, width, speed, team ,unique_id, model):
         super().__init__(unique_id, model)
         self.pos = np.array([x+300*team,y])
+        self.previous_pos = np.array([x+300*team,y])
         self.model = model
         self.width = width
         self.is_player = False
@@ -281,7 +286,7 @@ class Ball(mesa.Agent):
                 self.team = True
         
         else :
-
+            self.previous_pos = self.pos
             self.pos=self.pos+self.speed*self.direction
             self.speed = self.speed * 0.9
 
@@ -304,16 +309,23 @@ class Ball(mesa.Agent):
             setattr(closest_player,"ball_pos",self.pos)
             setattr(closest_player,"ball",self)
             self.is_getting_picked=True
+        if not self.on_ground:
+            if np.array([dist_seg(player.pos,self.previous_pos,self.pos,self.direction)<player.size+self.width for player in self.model.schedule.agent_buffer() if player.is_player and player!=self.thrower]).any():
+            
+                
+                self.on_ground=True
+                self.is_getting_picked=False
+                player_hit=[player for player in self.model.schedule.agent_buffer() if player.is_player and dist_seg(player.pos,self.previous_pos,self.pos,self.direction)<player.size+self.width][0]
+                if player_hit.team!=self.thrower_team:
 
-        if np.array([np.linalg.norm(self.pos-player.pos)<player.size+self.width for player in self.model.schedule.agent_buffer() if player.is_player]).any() and not self.on_ground:
-        
-            self.speed=0
-            self.on_ground=True
-            self.is_getting_picked=False
-            player_hit=[player for player in self.model.schedule.agent_buffer() if player.is_player and np.linalg.norm(self.pos-player.pos)<player.size+self.width][0]
-            if player_hit.team!=self.thrower_team:
-                self.model.schedule.remove(player_hit)
-        
+                    p=player_hit.strength/self.speed*player_hit.caught*(0.5+0.5*((12.5-dist_seg(player_hit.pos,self.previous_pos,self.pos,self.direction))/12.5))
+                    print(p,player_hit.strength/self.speed,player_hit.caught,(0.5+0.5*((12.5-dist_seg(player_hit.pos,self.previous_pos,self.pos,self.direction))/12.5)))
+                    if random.random()>p:
+                        self.model.schedule.remove(player_hit)
+                    else:
+                        self.model.schedule.remove(self.thrower)
+                self.speed=0
+
 def run_single_server():
     
     chart = ChartModule([{"Label": "team1", "Color": "blue"},
