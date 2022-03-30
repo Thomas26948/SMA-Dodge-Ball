@@ -319,7 +319,7 @@ class Ball(mesa.Agent):
                 if player_hit.team!=self.thrower_team:
 
                     p=player_hit.strength/self.speed*player_hit.caught*(0.5+0.5*((12.5-dist_seg(player_hit.pos,self.previous_pos,self.pos,self.direction))/12.5))
-                    print(p,player_hit.strength/self.speed,player_hit.caught,(0.5+0.5*((12.5-dist_seg(player_hit.pos,self.previous_pos,self.pos,self.direction))/12.5)))
+                   
                     if random.random()>p:
                         self.model.schedule.remove(player_hit)
                     else:
@@ -354,7 +354,7 @@ def plot(title,xlabel,ylabel,winner, loser):
 def run_batch():
     
     n_simulation = 50
-    batchrunner = BatchRunner(Game, {'n_player': n_simulation * [6],"n_ball" : [1]},
+    batchrunner = BatchRunner(Game, {'n_player': n_simulation * [6]},
                        model_reporters={"nb_of_players_team_1": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched ]),
                                         "nb_of_players_team_2": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched] ), 
                                         "winner": lambda x: 1 if sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched]) > sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched]) else 2 if  sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched]) < sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched]) else 3,                                        
@@ -449,13 +449,7 @@ if  __name__  ==  "__main__":
     
     #server.port = 8521
     #server.launch()
-    
-<<<<<<< HEAD
-    
+
     # run_single_server()
     df=run_batch()
     df.to_csv("data.csv")
-=======
-    run_single_server()
-    #df=run_batch()
->>>>>>> 47bd4d7550c8ed4e1a3b21bd06d9fbdac709e54f
