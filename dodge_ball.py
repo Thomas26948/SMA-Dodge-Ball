@@ -64,6 +64,8 @@ class  Game(mesa.Model):
 
         team1, team2 = create_team(n_player)
         self.team1 = team1
+        
+
         self.team2 = team2
         self.team1 = create_best_team(n_player)
         print("team : player :   |speed  |  strength  |  precision  |  caught  | " )
@@ -121,7 +123,7 @@ def create_best_team(n_player):
     for j in range(n_player):
             skill_list = []
             for k in range(n):
-                skill =  2.3 #In a gaussian distribution, it corresponds to the top 1% of the distribution
+                skill =  0.5 #In a gaussian distribution, it corresponds to the top 1% of the distribution
                 skill_list.append(skill)
             team.append(skill_list)
 
