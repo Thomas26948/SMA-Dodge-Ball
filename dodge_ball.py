@@ -57,7 +57,7 @@ def wander(x, y, r, speed, model,team):
     return np.array([new_x, new_y]),r
 
 class  Game(mesa.Model):
-    def  __init__(self,  n_player, n_ball):
+    def  __init__(self,  n_player):
         mesa.Model.__init__(self)
         self.space = mesa.space.ContinuousSpace(600, 600, False)
         self.schedule = RandomActivation(self)
@@ -76,8 +76,8 @@ class  Game(mesa.Model):
             strength = strength * 15 + 40
             self.schedule.add(Player(x=random.random() * 300,  y=random.random()  *  600,  speed=speed, team=False,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
             print("team 2 player : ", i + 1," {:.2f}".format(speed)," {:.2f}".format(strength)," {:.2f}".format(precision)," {:.2f}".format(caught))            
-        for  _  in  range(n_ball):
-            self.schedule.add(Ball(random.random()  *  300,  random.random()  *  300,  5 , 0, True ,uuid.uuid1(), self))    
+        
+        self.schedule.add(Ball(random.random()  *  300,  random.random()  *  300,  5 , 0, random.random()<0.5 ,uuid.uuid1(), self))    
          
         
         self.datacollector = DataCollector(model_reporters={
@@ -222,7 +222,6 @@ class Ball(mesa.Agent):
     def __init__(self, x, y, width, speed, team ,unique_id, model):
         super().__init__(unique_id, model)
         self.pos = np.array([x+300*team,y])
-        self.previous_pos = np.array([x+300*team,y])
         self.model = model
         self.width = width
         self.is_player = False
@@ -231,7 +230,6 @@ class Ball(mesa.Agent):
         self.speed = speed
         self.direction = None
         self.thrower_team = None
-        self.thrower = None
         self.is_getting_picked = False
     
     def portrayal_method(self):
@@ -259,7 +257,7 @@ class Ball(mesa.Agent):
                 self.team = True
         
         else :
-            self.previous_pos=self.pos
+
             self.pos=self.pos+self.speed*self.direction
             self.speed = self.speed * 0.9
 
@@ -282,15 +280,15 @@ class Ball(mesa.Agent):
             setattr(closest_player,"ball_pos",self.pos)
             setattr(closest_player,"ball",self)
             self.is_getting_picked=True
-        if not self.on_ground:
-            if np.array([dist_seg(player.pos,self.previous_pos,self.pos,self.direction)<player.size+self.width for player in self.model.schedule.agent_buffer() if player.is_player and player!=self.thrower]).any():
-            
-                self.speed=0
-                self.on_ground=True
-                self.is_getting_picked=False
-                player_hit=[player for player in self.model.schedule.agent_buffer() if player.is_player and player!=self.thrower and np.linalg.norm(np.cross(self.pos-player.pos,self.direction))<player.size+self.width][0]
-                if player_hit.team!=self.thrower_team:
-                    self.model.schedule.remove(player_hit)
+
+        if np.array([np.linalg.norm(self.pos-player.pos)<player.size+self.width for player in self.model.schedule.agent_buffer() if player.is_player]).any() and not self.on_ground:
+        
+            self.speed=0
+            self.on_ground=True
+            self.is_getting_picked=False
+            player_hit=[player for player in self.model.schedule.agent_buffer() if player.is_player and np.linalg.norm(self.pos-player.pos)<player.size+self.width][0]
+            if player_hit.team!=self.thrower_team:
+                self.model.schedule.remove(player_hit)
         
 def run_single_server():
     
@@ -299,11 +297,10 @@ def run_single_server():
                          data_collector_name= 'datacollector',canvas_height=200,canvas_width=500)
 
     s_player = UserSettableParameter("slider","nb_of_players", 6, 0, 10, 1)
-    s_ball = UserSettableParameter("slider","nb_of_balls", 1, 1, 10, 1)
+    
 
 
-
-    server  =  ModularServer(Game, [ContinuousCanvas(),chart],"Game",{"n_player": s_player, "n_ball": s_ball})
+    server  =  ModularServer(Game, [ContinuousCanvas(),chart],"Game",{"n_player": s_player})
     server.port = 8521 
     server.launch()  
 
@@ -394,7 +391,7 @@ def run_batch():
 
 
 if  __name__  ==  "__main__":
-    #server  =  ModularServer(Village, [ContinuousCanvas()],"Village",{"n_villagers":  20,"n_werewolves":  5,"n_cleric":  1,"n_hunter":  2})
+    
     #server.port = 8521
     #server.launch()
     
