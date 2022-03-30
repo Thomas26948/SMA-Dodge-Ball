@@ -63,16 +63,18 @@ class  Game(mesa.Model):
         self.schedule = RandomActivation(self)
 
         team1, team2 = create_team(n_player)
-        print("team 1 : player | speed | strenght | precision | caught | " )
+        print("team 1 : player | speed | strength | precision | caught | " )
         for  i  in  range(n_player):
             speed, strength, precision,caught = team1[i]
-            speed = speed * 90 + 10
+            speed = speed * 25 + 10
+            strength = strength * 15 + 40
             self.schedule.add(Player(x=random.random() * 300 + 300,  y=random.random()  *  600,  speed=speed, team=True,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
             print("team 1 player : ",i,speed,strength,precision,caught)
         for  i  in  range(n_player):
             speed, strength, precision,caught = team2[i]
-            speed = speed * 90 + 10
-            self.schedule.add(Player(x=random.random() * 300 + 300,  y=random.random()  *  600,  speed=speed, team=False,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
+            speed = speed * 25 + 10
+            strength = strength * 15 + 40
+            self.schedule.add(Player(x=random.random() * 300,  y=random.random()  *  600,  speed=speed, team=False,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
             print("team 2 player : ",i,speed,strength,precision,caught)
         for  _  in  range(n_ball):
             self.schedule.add(Ball(random.random()  *  300,  random.random()  *  300,  5 , 0, random.random()<0.5 ,uuid.uuid1(), self))    
@@ -90,21 +92,6 @@ class  Game(mesa.Model):
         self.datacollector.collect(self)
         if self.schedule.steps >= 1000:
             self.running = False
-
-
-def move(x, y, speed, angle):
-    return x + speed * math.cos(angle), y + speed * math.sin(angle)
-
-
-def go_to(x, y, speed, dest_x, dest_y):
-    if np.linalg.norm((x - dest_x, y - dest_y)) < speed:
-        return (dest_x, dest_y), 2 * math.pi * random.random()
-    else:
-        angle = math.acos((dest_x - x)/np.linalg.norm((x - dest_x, y - dest_y)))
-        if dest_y < y:
-            angle = - angle
-        return move(x, y, speed, angle), angle
-
 
 
 
@@ -128,7 +115,7 @@ def create_team(n_player):
         for j in range(n_player):
             skill_list = []
             for k in range(n):
-                skill =  random.random() * 10
+                skill =  np.random.normal()
                 skill_list.append(skill)
             if i==0:
                 team_1.append(skill_list)
@@ -147,6 +134,7 @@ class Player(mesa.Agent):
         self.speed = speed
         self.model = model
         self.team = team
+        
         self.facing = math.pi/2
         self.is_player = True
 
@@ -156,7 +144,7 @@ class Player(mesa.Agent):
         self.caught = caught 
         self.has_ball = False
         self.can_get_ball = False
-        self.ball_pos = None
+        self.ball = None
 
         self.size = 7.5
         
@@ -180,21 +168,32 @@ class Player(mesa.Agent):
         
         if self.can_get_ball:
             
-            u=self.ball_pos-self.pos
+            u=self.ball.pos-self.pos
             d=np.linalg.norm(u)
             if d<self.speed:
-                self.pos=self.ball_pos
-                self.has_ball
+                self.pos=self.ball.pos
+                self.has_ball = True
                 self.can_get_ball = False
-
+                
             else: 
 
                 self.pos=self.pos+(u/d)*self.speed
 
 
-        elif self.has_ball :
+        elif self.has_ball : 
 
-           pass
+            u=random.choice([player for player in self.model.schedule.agent_buffer() if player.team!=self.team]).pos-self.pos
+            d=np.linalg.norm(u)
+
+
+
+            self.can_get_ball = False
+            self.ball.direction=u/d
+            self.ball.speed=self.strength 
+            self.ball.on_ground = False
+            self.has_ball=False
+            self.ball.thrower_team=self.team
+            
 
         else: 
             self.pos,self.facing= wander(self.pos[0], self.pos[1], self.facing ,self.speed, self.model, self.team)
@@ -211,12 +210,11 @@ class Ball(mesa.Agent):
         self.model = model
         self.width = width
         self.is_player = False
-        self.is_taken = False
         self.on_ground = True
         self.team = team
         self.speed = speed
-        self.destination = None
-        
+        self.direction = None
+        self.thrower_team = None
 
     
     def portrayal_method(self):
@@ -231,6 +229,31 @@ class Ball(mesa.Agent):
 
 
     def step(self):
+        
+        
+        if self.speed<5:
+            self.on_ground = True
+            self.speed = 0
+            
+            if self.pos[0]<300:
+                
+                self.team = False
+            else:
+                self.team = True
+        
+        else :
+
+            self.pos=self.pos+self.speed*self.direction
+            self.speed = self.speed * 0.9
+
+
+        if (self.pos<0).any() or (self.pos>600).any():
+
+            self.team = not self.team
+            new_thrower=random.choice([player for player in self.model.schedule.agent_buffer() if player.team==self.team and player!=self])
+            setattr(new_thrower,"ball",self)
+            setattr(new_thrower,"has_ball",True)
+            self.pos=new_thrower.pos
 
         if self.on_ground:
 
@@ -238,7 +261,16 @@ class Ball(mesa.Agent):
             closest_player=min(player_distance,key=lambda x : x[0])[1]
             setattr(closest_player,"can_get_ball",True)
             setattr(closest_player,"ball_pos",self.pos)
-            print(closest_player)
+            setattr(closest_player,"ball",self)
+
+
+        if np.array([np.linalg.norm(self.pos-player.pos)<player.size+self.width for player in self.model.schedule.agent_buffer() if player!=self]).any() and not self.on_ground:
+        
+            self.speed=0
+            self.on_ground=True
+            player_hit=[player for player in self.model.schedule.agent_buffer() if player!=self and np.linalg.norm(self.pos-player.pos)<player.size+self.width][0]
+            if player_hit.team!=self.thrower_team:
+                self.model.schedule.remove(player_hit)
         
 def run_single_server():
     
