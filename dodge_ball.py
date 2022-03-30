@@ -66,22 +66,23 @@ class  Game(mesa.Model):
         self.team1 = team1
         self.team2 = team2
         self.team1 = create_best_team(n_player)
-        print("team 1: player |speed|strength|precision|caught| " )
+        print("team : player :   |speed  |  strength  |  precision  |  caught  | " )
         for  i  in  range(n_player):
-            speed, strength, precision,caught = team1[i]
+            speed, strength, precision,caught = self.team1[i]
             speed = speed * 20 + 10
             strength = strength * 15 + 40
             caught=min(caught,1)
             self.schedule.add(Player(x=random.random() * 300 + 300,  y=random.random()  *  600,  speed=speed, team=True,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
-            print("team 1 player : ", i + 1," {:.2f}".format(speed)," {:.2f}".format(strength)," {:.2f}".format(precision)," {:.2f}".format(caught))
+            print("team 1 player : ", i + 1," {:.2f}".format(speed),"     {:.2f}".format(strength),"       {:.2f}".format(precision),"         {:.2f}".format(caught))
         for  i  in  range(n_player):
-            speed, strength, precision,caught = team2[i]
+            speed, strength, precision,caught = self.team2[i]
             speed = speed * 20 + 10
             strength = strength * 15 + 40
             caught=min(caught,1)
 
             self.schedule.add(Player(x=random.random() * 300,  y=random.random()  *  600,  speed=speed, team=False,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
-            print("team 2 player : ", i + 1," {:.2f}".format(speed)," {:.2f}".format(strength)," {:.2f}".format(precision)," {:.2f}".format(caught))            
+            print("team 2 player : ", i + 1," {:.2f}".format(speed),"     {:.2f}".format(strength),"       {:.2f}".format(precision),"         {:.2f}".format(caught))
+            
         
         self.schedule.add(Ball(random.random()  *  300,  random.random()  *  300,  5 , 0, random.random()<0.5 ,uuid.uuid1(), self))    
          
@@ -240,9 +241,8 @@ class Player(mesa.Agent):
 
         else: 
             self.pos,self.facing= wander(self.pos[0], self.pos[1], self.facing ,self.speed, self.model, self.team)
-            
             [setattr(self,"pos",self.pos+(2.1)*self.size*(self.pos - player.pos)/np.linalg.norm(self.pos - player.pos)) for player in self.model.schedule.agent_buffer() if np.linalg.norm(self.pos - player.pos)  < 16 and player.is_player and player!=self ]
-        
+
 
         self.speed = self.initial_speed*math.exp(-self.model.schedule.steps/400)
         
@@ -353,7 +353,7 @@ def plot(title,xlabel,ylabel,winner, loser):
 
 def run_batch():
     
-    n_simulation = 50
+    n_simulation = 10
     batchrunner = BatchRunner(Game, {'n_player': n_simulation * [6]},
                        model_reporters={"nb_of_players_team_1": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched ]),
                                         "nb_of_players_team_2": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched] ), 
@@ -449,7 +449,7 @@ if  __name__  ==  "__main__":
     
     #server.port = 8521
     #server.launch()
-
+    
     # run_single_server()
     df=run_batch()
     df.to_csv("data.csv")
