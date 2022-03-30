@@ -5,8 +5,8 @@ from collections import defaultdict
 
 import uuid
 import mesa
-import numpy
-import pandas
+import numpy as np
+import pandas as pd
 from mesa import space
 from mesa.batchrunner import BatchRunner
 from mesa.datacollection import DataCollector
@@ -63,26 +63,26 @@ class  Game(mesa.Model):
         self.schedule = RandomActivation(self)
 
         team1, team2 = create_team(n_player)
-        print("team 1 : player | speed | strength | precision | caught | " )
+        print("team 1: player |speed|strength|precision|caught| " )
         for  i  in  range(n_player):
             speed, strength, precision,caught = team1[i]
             speed = speed * 20 + 10
             strength = strength * 15 + 40
             self.schedule.add(Player(x=random.random() * 300 + 300,  y=random.random()  *  600,  speed=speed, team=True,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
-            print("team 1 player : ",i,speed,strength,precision,caught)
+            print("team 1 player : ", i + 1," {:.2f}".format(speed)," {:.2f}".format(strength)," {:.2f}".format(precision)," {:.2f}".format(caught))
         for  i  in  range(n_player):
             speed, strength, precision,caught = team2[i]
             speed = speed * 20 + 10
             strength = strength * 15 + 40
             self.schedule.add(Player(x=random.random() * 300,  y=random.random()  *  600,  speed=speed, team=False,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
-            print("team 2 player : ",i,speed,strength,precision,caught)
+            print("team 2 player : ", i + 1," {:.2f}".format(speed)," {:.2f}".format(strength)," {:.2f}".format(precision)," {:.2f}".format(caught))            
         for  _  in  range(n_ball):
             self.schedule.add(Ball(random.random()  *  300,  random.random()  *  300,  5 , 0, True ,uuid.uuid1(), self))    
          
         
         self.datacollector = DataCollector(model_reporters={
-            "team1": [lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team]),[self]],
-            "team2": [lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team]),[self]]})
+            "team1": [lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched]),[self]],
+            "team2": [lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched]),[self]]})
         
 
 
@@ -92,6 +92,7 @@ class  Game(mesa.Model):
         self.datacollector.collect(self)
         if self.schedule.steps >= 1000:
             self.running = False
+
 
 
 
@@ -124,7 +125,11 @@ def create_team(n_player):
 
     team_1_array = np.array(team_1)
     team_2_array = np.array(team_2)
-    return np.exp(team_1_array) / np.sum(np.exp(team_1_array), axis=0), np.exp(team_2_array) / np.sum(np.exp(team_2_array), axis=0)
+    return np.exp(team_1_array +np.random.random()) / np.sum(np.exp(team_1_array), axis=0), np.exp(team_2_array+np.random.random()) / np.sum(np.exp(team_2_array), axis=0)
+
+
+
+
 
 class Player(mesa.Agent):
     def __init__(self, x, y, speed, team,strength, precision, caught, unique_id: int, model: Game):
@@ -291,18 +296,29 @@ def run_single_server():
     server.launch()  
 
 
-# def run_batch():
+def run_batch():
     
-    
-#     batchrunner = BatchRunner(Village, {'n_villagers': [50],"n_werewolves" : [5],"n_cleric" : list(range(0,6,1)),'n_hunter' : [1]},
-#                        model_reporters={"nb_of_villagers": lambda x: sum([1 for villager in x.schedule.agent_buffer() if not villager.iswerewolf]),
-#                                         "nb_of_werewolves": lambda x: sum([1 for villager in x.schedule.agent_buffer() if villager.iswerewolf and not villager.istransformed] ), 
-#                                         "nb_of_transformed_werewolves": lambda x: sum([1 for villager in x.schedule.agent_buffer() if villager.iswerewolf and villager.istransformed] ), 
-#                                         "nb_of_characters": lambda x: sum([1 for villager in x.schedule.agent_buffer()] )})
-    
-#     batchrunner.run_all()
-#     df = batchrunner.get_model_vars_dataframe()
-#     return df
+    n_simulation = 2
+    batchrunner = BatchRunner(Game, {'n_player': n_simulation * [6],"n_ball" : [1]},
+                       model_reporters={"nb_of_players_team_1": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched ]),
+                                        "nb_of_players_team_2": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched] ), 
+                                        "winner": lambda x: 1 if sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched]) > sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched]) else 2 if  sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched]) < sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched]) else 3,
+                                        "mean_speed_team_1": lambda x: np.mean([player.speed for player in x.schedule.agent_buffer() if player.is_player and not player.team]),
+                                        "mean_speed_team_2": lambda x: np.mean([player.speed for player in x.schedule.agent_buffer() if player.is_player and player.team]),
+                                        "mean_strength_team_1": lambda x: np.mean([player.strength for player in x.schedule.agent_buffer() if player.is_player and not player.team]),
+                                        "mean_strength_team_2": lambda x: np.mean([player.strength for player in x.schedule.agent_buffer() if player.is_player and player.team]),
+                                        "mean_precision_team_1": lambda x: np.mean([player.precision for player in x.schedule.agent_buffer() if player.is_player and not player.team]),
+                                        "mean_precision_team_2": lambda x: np.mean([player.precision for player in x.schedule.agent_buffer() if player.is_player and player.team]),
+                                        "mean_caught_team_1": lambda x: np.mean([player.caught for player in x.schedule.agent_buffer() if player.is_player and not player.team]),
+                                        "mean_caught_team_2": lambda x: np.mean([player.caught for player in x.schedule.agent_buffer() if player.is_player and player.team])
+                                        })
+
+
+    batchrunner.run_all()
+    df = batchrunner.get_model_vars_dataframe()
+
+
+    return df
     
 
 if  __name__  ==  "__main__":
@@ -311,5 +327,19 @@ if  __name__  ==  "__main__":
     #server.launch()
     
     
-    run_single_server()
-    #df=run_batch()
+    # run_single_server()
+    df=run_batch()
+    print(df)
+    winner_stats = []
+    loser_stats = []
+    draw_stats = []
+    for index, row in df.iterrows():
+        print(row['mean_caught_team_1'])
+        if row['winner'] == 1:
+            winner_stats.append(row['mean_caught_team_1'])
+        elif row['winner'] == 2:
+            winner_stats.append(row['mean_caught_team_2'])
+            
+
+    plt.plot(winner_stats)
+    plt.show()

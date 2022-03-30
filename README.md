@@ -66,3 +66,5 @@ Pour déterminer les attributs des joueurs on peut alors définir un algo random
 • Ajouter une ligne qui sépare les 2 équipes. (De ce que j'ai compris, le .js et simplecontinousModule.py ne servent à rien. Mais je ne vois pas comment créer une ligne dans mesa)
 
 
+• Algorithme supervisé pour apprendre la meilleure équipe.
+On peut lancer n simulation avec différentes team générées aléatoirement. Et on récupére la composition d'une équipe avec le score obtenu.
