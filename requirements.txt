@@ -4,3 +4,4 @@ tornado
 pandas
 sklearn
 matplotlib
+seaborn
