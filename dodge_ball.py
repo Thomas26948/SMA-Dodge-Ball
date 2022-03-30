@@ -87,10 +87,14 @@ class  Game(mesa.Model):
 
 
 
-    def step(self):
-        self.schedule.step()
-        self.datacollector.collect(self)
-        if self.schedule.steps >= 1000:
+    def step(self):	
+        if (not sum([1 for player in self.schedule.agent_buffer() if player.is_player and player.team]) or not 	
+         sum([1 for player in self.schedule.agent_buffer() if player.is_player and not player.team])): 	
+            self.running = False	
+            return	
+        self.schedule.step()	
+        self.datacollector.collect(self)	
+        if self.schedule.steps >= 1000:	
             self.running = False
 
 
@@ -99,10 +103,8 @@ class  Game(mesa.Model):
 def create_team(n_player):
     """
     Create a team of n_player players with fair distribution of the team using softmax function
-
     Args:
         n_player (int): number of players in the team
-
     Returns:
         array: array of players with their skills
     """
@@ -128,7 +130,14 @@ def create_team(n_player):
     return np.exp(team_1_array +np.random.random()) / np.sum(np.exp(team_1_array), axis=0), np.exp(team_2_array+np.random.random()) / np.sum(np.exp(team_2_array), axis=0)
 
 
+def dist_seg(P,A,B,direction):
 
+    BH=np.dot(A-B,direction)*direction
+    PB=B-P
+    PA=A-P
+    PH=PB+BH
+
+    return min(min(np.linalg.norm(PA),np.linalg.norm(PB)),np.linalg.norm(PH))
 
 
 class Player(mesa.Agent):
@@ -199,6 +208,7 @@ class Player(mesa.Agent):
             self.has_ball=False
             self.ball.thrower_team=self.team
             self.ball.is_getting_picked = False
+            self.ball.thrower=self
 
         else: 
             self.pos,self.facing= wander(self.pos[0], self.pos[1], self.facing ,self.speed, self.model, self.team)
@@ -212,6 +222,7 @@ class Ball(mesa.Agent):
     def __init__(self, x, y, width, speed, team ,unique_id, model):
         super().__init__(unique_id, model)
         self.pos = np.array([x+300*team,y])
+        self.previous_pos = np.array([x+300*team,y])
         self.model = model
         self.width = width
         self.is_player = False
@@ -220,6 +231,7 @@ class Ball(mesa.Agent):
         self.speed = speed
         self.direction = None
         self.thrower_team = None
+        self.thrower = None
         self.is_getting_picked = False
     
     def portrayal_method(self):
@@ -247,7 +259,7 @@ class Ball(mesa.Agent):
                 self.team = True
         
         else :
-
+            self.previous_pos=self.pos
             self.pos=self.pos+self.speed*self.direction
             self.speed = self.speed * 0.9
 
@@ -270,15 +282,15 @@ class Ball(mesa.Agent):
             setattr(closest_player,"ball_pos",self.pos)
             setattr(closest_player,"ball",self)
             self.is_getting_picked=True
-
-        if np.array([np.linalg.norm(self.pos-player.pos)<player.size+self.width for player in self.model.schedule.agent_buffer() if player.is_player]).any() and not self.on_ground:
-        
-            self.speed=0
-            self.on_ground=True
-            self.is_getting_picked=False
-            player_hit=[player for player in self.model.schedule.agent_buffer() if player.is_player and np.linalg.norm(self.pos-player.pos)<player.size+self.width][0]
-            if player_hit.team!=self.thrower_team:
-                self.model.schedule.remove(player_hit)
+        if not self.on_ground:
+            if np.array([dist_seg(player.pos,self.previous_pos,self.pos,self.direction)<player.size+self.width for player in self.model.schedule.agent_buffer() if player.is_player and player!=self.thrower]).any():
+            
+                self.speed=0
+                self.on_ground=True
+                self.is_getting_picked=False
+                player_hit=[player for player in self.model.schedule.agent_buffer() if player.is_player and player!=self.thrower and np.linalg.norm(np.cross(self.pos-player.pos,self.direction))<player.size+self.width][0]
+                if player_hit.team!=self.thrower_team:
+                    self.model.schedule.remove(player_hit)
         
 def run_single_server():
     
@@ -386,7 +398,5 @@ if  __name__  ==  "__main__":
     #server.port = 8521
     #server.launch()
     
-    
-    # run_single_server()
-    df=run_batch()
-    
+    run_single_server()
+    #df=run_batch()
