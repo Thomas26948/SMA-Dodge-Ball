@@ -66,19 +66,22 @@ class  Game(mesa.Model):
         self.team1 = team1
         self.team2 = team2
         self.team1 = create_best_team(n_player)
+
+        team1[:,0] = team1[:,0] * 20 + 10
+        team2[:,0] = team2[:,0] * 20 + 10
+        team1[:,1] = team1[:,1] * 15 + 40
+        team2[:,1] = team2[:,1] * 15 + 40
+        team1[:,3] = np.minimum(team1[:,3], 1)
+        team2[:,3] = np.minimum(team2[:,3], 1)
+
+        self.team1, self.team2 = team1, team2
         print("team : player :   |speed  |  strength  |  precision  |  caught  | " )
         for  i  in  range(n_player):
             speed, strength, precision,caught = self.team1[i]
-            speed = speed * 20 + 10
-            strength = strength * 15 + 40
-            caught=min(caught,1)
             self.schedule.add(Player(x=random.random() * 300 + 300,  y=random.random()  *  600,  speed=speed, team=True,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
             print("team 1 player : ", i + 1," {:.2f}".format(speed),"     {:.2f}".format(strength),"       {:.2f}".format(precision),"         {:.2f}".format(caught))
         for  i  in  range(n_player):
             speed, strength, precision,caught = self.team2[i]
-            speed = speed * 20 + 10
-            strength = strength * 15 + 40
-            caught=min(caught,1)
 
             self.schedule.add(Player(x=random.random() * 300,  y=random.random()  *  600,  speed=speed, team=False,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
             print("team 2 player : ", i + 1," {:.2f}".format(speed),"     {:.2f}".format(strength),"       {:.2f}".format(precision),"         {:.2f}".format(caught))
@@ -109,7 +112,7 @@ def create_best_team(n_player):
     """
     Create the best team for the game
 
-    Args:
+    Args:s
         n_player (int): number of players in the team
 
     Returns:
@@ -156,7 +159,7 @@ def create_team(n_player):
 
     team_1_array = np.array(team_1)
     team_2_array = np.array(team_2)
-    return np.exp(team_1_array +np.random.random()) / np.sum(np.exp(team_1_array), axis=0), np.exp(team_2_array+np.random.random()) / np.sum(np.exp(team_2_array), axis=0)
+    return np.exp(team_1_array +np.random.random(4)) / np.sum(np.exp(team_1_array), axis=0), np.exp(team_2_array+np.random.random(4)) / np.sum(np.exp(team_2_array), axis=0)
 
 
 def dist_seg(P,A,B,direction):
@@ -319,7 +322,7 @@ class Ball(mesa.Agent):
                 if player_hit.team!=self.thrower_team:
 
                     p=player_hit.strength/self.speed*player_hit.caught*(0.5+0.5*((12.5-dist_seg(player_hit.pos,self.previous_pos,self.pos,self.direction))/12.5))
-                    print(p,player_hit.strength/self.speed,player_hit.caught,(0.5+0.5*((12.5-dist_seg(player_hit.pos,self.previous_pos,self.pos,self.direction))/12.5)))
+                    # print(p,player_hit.strength/self.speed,player_hit.caught,(0.5+0.5*((12.5-dist_seg(player_hit.pos,self.previous_pos,self.pos,self.direction))/12.5)))
                     if random.random()>p:
                         self.model.schedule.remove(player_hit)
                     else:

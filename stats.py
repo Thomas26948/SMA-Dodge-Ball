@@ -1,7 +1,7 @@
 from sklearn import tree
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
+# import seaborn as sns
 
 def plot_tree():
         
@@ -26,3 +26,5 @@ def plot_tree():
     plt.show()
 
 plot_tree()
+
+
