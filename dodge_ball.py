@@ -64,6 +64,8 @@ class  Game(mesa.Model):
 
         team1, team2 = create_team(n_player)
         self.team1 = team1
+        
+
         self.team2 = team2
         self.team1 = create_best_team(n_player)
 
@@ -124,7 +126,7 @@ def create_best_team(n_player):
     for j in range(n_player):
             skill_list = []
             for k in range(n):
-                skill =  2.3 #In a gaussian distribution, it corresponds to the top 1% of the distribution
+                skill =  0.5 #In a gaussian distribution, it corresponds to the top 1% of the distribution
                 skill_list.append(skill)
             team.append(skill_list)
 
@@ -322,7 +324,7 @@ class Ball(mesa.Agent):
                 if player_hit.team!=self.thrower_team:
 
                     p=player_hit.strength/self.speed*player_hit.caught*(0.5+0.5*((12.5-dist_seg(player_hit.pos,self.previous_pos,self.pos,self.direction))/12.5))
-                    # print(p,player_hit.strength/self.speed,player_hit.caught,(0.5+0.5*((12.5-dist_seg(player_hit.pos,self.previous_pos,self.pos,self.direction))/12.5)))
+                   
                     if random.random()>p:
                         self.model.schedule.remove(player_hit)
                     else:
@@ -452,7 +454,6 @@ if  __name__  ==  "__main__":
     
     #server.port = 8521
     #server.launch()
-    
     
     # run_single_server()
     df=run_batch()
