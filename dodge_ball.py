@@ -57,7 +57,7 @@ def wander(x, y, r, speed, model,team):
     return np.array([new_x, new_y]),r
 
 class  Game(mesa.Model):
-    def  __init__(self,  n_player, n_ball):
+    def  __init__(self,  n_player):
         mesa.Model.__init__(self)
         self.space = mesa.space.ContinuousSpace(600, 600, False)
         self.schedule = RandomActivation(self)
@@ -79,8 +79,8 @@ class  Game(mesa.Model):
             strength = strength * 15 + 40
             self.schedule.add(Player(x=random.random() * 300,  y=random.random()  *  600,  speed=speed, team=False,  strength=strength, precision=precision, caught=caught, unique_id=uuid.uuid1(), model=self))
             print("team 2 player : ", i + 1," {:.2f}".format(speed)," {:.2f}".format(strength)," {:.2f}".format(precision)," {:.2f}".format(caught))            
-        for  _  in  range(n_ball):
-            self.schedule.add(Ball(random.random()  *  300,  random.random()  *  300,  5 , 0, True ,uuid.uuid1(), self))    
+        
+        self.schedule.add(Ball(random.random()  *  300,  random.random()  *  300,  5 , 0, random.random()<0.5 ,uuid.uuid1(), self))    
          
         
         self.datacollector = DataCollector(model_reporters={
@@ -89,14 +89,15 @@ class  Game(mesa.Model):
         
 
 
-    def step(self):
-        if (not sum([1 for player in self.schedule.agent_buffer() if player.is_player and player.team]) or not
-         sum([1 for player in self.schedule.agent_buffer() if player.is_player and not player.team])):
-            self.running = False
-            return
-        self.schedule.step()
-        self.datacollector.collect(self)
-        if self.schedule.steps >= 1000:
+
+    def step(self):	
+        if (not sum([1 for player in self.schedule.agent_buffer() if player.is_player and player.team]) or not 	
+         sum([1 for player in self.schedule.agent_buffer() if player.is_player and not player.team])): 	
+            self.running = False	
+            return	
+        self.schedule.step()	
+        self.datacollector.collect(self)	
+        if self.schedule.steps >= 1000:	
             self.running = False
 
 
@@ -126,10 +127,8 @@ def create_best_team(n_player):
 def create_team(n_player):
     """
     Create a team of n_player players with fair distribution of the team using softmax function
-
     Args:
         n_player (int): number of players in the team
-
     Returns:
         array: array of players with their skills
     """
@@ -155,7 +154,14 @@ def create_team(n_player):
     return np.exp(team_1_array +np.random.random()) / np.sum(np.exp(team_1_array), axis=0), np.exp(team_2_array+np.random.random()) / np.sum(np.exp(team_2_array), axis=0)
 
 
+def dist_seg(P,A,B,direction):
 
+    BH=np.dot(A-B,direction)*direction
+    PB=B-P
+    PA=A-P
+    PH=PB+BH
+
+    return min(min(np.linalg.norm(PA),np.linalg.norm(PB)),np.linalg.norm(PH))
 
 
 class Player(mesa.Agent):
@@ -226,6 +232,7 @@ class Player(mesa.Agent):
             self.has_ball=False
             self.ball.thrower_team=self.team
             self.ball.is_getting_picked = False
+            self.ball.thrower=self
 
         else: 
             self.pos,self.facing= wander(self.pos[0], self.pos[1], self.facing ,self.speed, self.model, self.team)
@@ -314,11 +321,10 @@ def run_single_server():
                          data_collector_name= 'datacollector',canvas_height=200,canvas_width=500)
 
     s_player = UserSettableParameter("slider","nb_of_players", 6, 0, 10, 1)
-    s_ball = UserSettableParameter("slider","nb_of_balls", 1, 1, 10, 1)
+    
 
 
-
-    server  =  ModularServer(Game, [ContinuousCanvas(),chart],"Game",{"n_player": s_player, "n_ball": s_ball})
+    server  =  ModularServer(Game, [ContinuousCanvas(),chart],"Game",{"n_player": s_player})
     server.port = 8521 
     server.launch()  
 
@@ -428,11 +434,16 @@ def run_batch():
 
 
 if  __name__  ==  "__main__":
-    #server  =  ModularServer(Village, [ContinuousCanvas()],"Village",{"n_villagers":  20,"n_werewolves":  5,"n_cleric":  1,"n_hunter":  2})
+    
     #server.port = 8521
     #server.launch()
     
+<<<<<<< HEAD
     
     # run_single_server()
     df=run_batch()
     df.to_csv("data.csv")
+=======
+    run_single_server()
+    #df=run_batch()
+>>>>>>> 47bd4d7550c8ed4e1a3b21bd06d9fbdac709e54f

@@ -67,4 +67,4 @@ Pour déterminer les attributs des joueurs on peut alors définir un algo random
 
 
 • Algorithme supervisé pour apprendre la meilleure équipe.
-On peut lancer n simulation avec différentes team générées aléatoirement. Et on récupére la composition d'une équipe avec le score obtenu.
+On peut lancer n simulations avec différentes team générées aléatoirement. Et on récupére la composition d'une équipe avec le score obtenu.
