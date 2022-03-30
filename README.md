@@ -1,6 +1,6 @@
 Auteurs :  
 Thibaut VAILLANT   
-Cyndy Marthe Noubissi Kouopestchop  
+Cyndy Marthe NOUBISSI KOUOPESTCHOP  
 Thomas NIGOGHOSSIAN  
 
 
