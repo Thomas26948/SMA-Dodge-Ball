@@ -16,7 +16,7 @@ def plot_tree():
     df = pd.read_csv('data.csv')
     print(df)
     print((df['winner']==1).sum())
-
+    print(df.columns)
     df = df.drop(df[df['winner']==3].index)
 
     y = df['winner']
@@ -58,6 +58,6 @@ def heatmap(real_param_1, real_param_2):
 
 real_param_1 = 'strength_team_1'
 real_param_2 = 'speed_team_2'
-heatmap(real_param_1, real_param_2)
+# heatmap(real_param_1, real_param_2)
 
-# plot_tree()
+plot_tree()

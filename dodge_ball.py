@@ -2,7 +2,6 @@ import math
 import random
 import numpy as np
 from collections import defaultdict
-
 import uuid
 import mesa
 import numpy as np
@@ -77,7 +76,10 @@ class  Game(mesa.Model):
         self.schedule = RandomActivation(self)
 
         team1, team2 = create_team(n_player)
+        #Uncomment the next line to create a team with the best skills possible
         # team1 = create_best_team(n_player)
+
+        #Uncomment the next line to create a team with preselected parameters 1 and 2
         # team1, team2 = create_team_benchmark(n_player, param1, param2,'strength','speed')
 
         team1[:,0] = team1[:,0] * 20 + 10
@@ -463,16 +465,26 @@ def plot(title,xlabel,ylabel,winner, loser):
     plt.show()
 
 
-def run_batch():
+def run_batch(benchmark=False):
     """
     Function to run the model in a batch, to compare the different parameters
+
+
+    Args:
+        benchmark (bool): if True, the model is run in benchmark mode
 
     Returns:
         dataframe: dataframe containing the results of the model
     """
-    
+    if benchmark:
+        param1 = np.linspace(0,1,10)
+        param2 = np.linspace(0,1,10)
+    else:
+        param1 = None
+        param2 = None
+
     n_simulation = 100
-    batchrunner = BatchRunner(Game, {'n_player': n_simulation * [6]},
+    batchrunner = BatchRunner(Game, {'n_player': n_simulation * [6],  'param1': param1,'param1': param2},
                        model_reporters={"nb_of_players_team_1": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched ]),
                                         "nb_of_players_team_2": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched] ), 
                                         "winner": lambda x: 1 if sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched]) > sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched]) else 2 if  sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched]) < sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched]) else 3,                                        
@@ -568,6 +580,9 @@ if  __name__  ==  "__main__":
     #server.port = 8521
     #server.launch()
     
-    # run_single_server()
-    df=run_batch()
-    df.to_csv("data.csv")
+    # To run the mesa interface
+    run_single_server()
+
+    # Uncomment the next line to run the script in batch and to save the results of the simulation in a scrpt
+    # df = run_batch()
+    # df.to_csv("data.csv")
