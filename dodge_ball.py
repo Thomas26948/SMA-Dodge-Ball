@@ -292,10 +292,20 @@ def run_single_server():
     server.port = 8521 
     server.launch()  
 
+def plot(title,xlabel,ylabel,winner, loser):
+    fig, ax = plt.subplots()
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    plt.plot(winner, label="Winner")
+    plt.plot(loser, label="Loser")
+    plt.legend()
+    plt.show()
+
 
 def run_batch():
     
-    n_simulation = 2
+    n_simulation = 10
     batchrunner = BatchRunner(Game, {'n_player': n_simulation * [6],"n_ball" : [1]},
                        model_reporters={"nb_of_players_team_1": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched ]),
                                         "nb_of_players_team_2": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched] ), 
@@ -314,9 +324,59 @@ def run_batch():
     batchrunner.run_all()
     df = batchrunner.get_model_vars_dataframe()
 
+    print(df)
+    
+
+    winner_caught = []
+    loser_caught = []
+    winner_speed = []
+    loser_speed = []
+    winner_strength = []
+    loser_strength = []
+    winner_precision = []
+    loser_precision = []
+
+
+    draw_stats = []
+    for index, row in df.iterrows():
+        if row['winner'] == 1:
+            winner_caught.append(row['mean_caught_team_1'])
+            loser_caught.append(row['mean_caught_team_2'])
+
+            winner_speed.append(row['mean_speed_team_1'])
+            loser_speed.append(row['mean_speed_team_2'])
+
+            winner_strength.append(row['mean_strength_team_1'])
+            loser_strength.append(row['mean_strength_team_2'])
+
+            winner_precision.append(row['mean_precision_team_1'])
+            loser_precision.append(row['mean_precision_team_2'])
+
+            
+
+        elif row['winner'] == 2:
+            winner_caught.append(row['mean_caught_team_2'])
+            loser_caught.append(row['mean_caught_team_1'])
+
+            winner_speed.append(row['mean_speed_team_2'])
+            loser_speed.append(row['mean_speed_team_1'])
+
+            winner_strength.append(row['mean_strength_team_2'])
+            loser_strength.append(row['mean_strength_team_1'])
+
+            winner_precision.append(row['mean_precision_team_2'])
+            loser_precision.append(row['mean_precision_team_1'])
+
+
+
+    plot("Caught", "Number of simulation", "Mean caught", winner_caught, loser_caught)
+    plot("Speed", "Number of simulation", "Mean speed", winner_speed, loser_speed)
+    plot("Strength", "Number of simulation", "Mean strength", winner_strength, loser_strength)
+    plot("Precision", "Number of simulation", "Mean precision", winner_precision, loser_precision)
 
     return df
     
+
 
 if  __name__  ==  "__main__":
     #server  =  ModularServer(Village, [ContinuousCanvas()],"Village",{"n_villagers":  20,"n_werewolves":  5,"n_cleric":  1,"n_hunter":  2})
@@ -326,17 +386,4 @@ if  __name__  ==  "__main__":
     
     # run_single_server()
     df=run_batch()
-    print(df)
-    winner_stats = []
-    loser_stats = []
-    draw_stats = []
-    for index, row in df.iterrows():
-        print(row['mean_caught_team_1'])
-        if row['winner'] == 1:
-            winner_stats.append(row['mean_caught_team_1'])
-        elif row['winner'] == 2:
-            winner_stats.append(row['mean_caught_team_2'])
-            
-
-    plt.plot(winner_stats)
-    plt.show()
+    
