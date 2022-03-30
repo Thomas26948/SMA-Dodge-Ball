@@ -63,6 +63,9 @@ class  Game(mesa.Model):
         self.schedule = RandomActivation(self)
 
         team1, team2 = create_team(n_player)
+        self.team1 = team1
+        self.team2 = team2
+        self.team1 = create_best_team(n_player)
         print("team 1: player |speed|strength|precision|caught| " )
         for  i  in  range(n_player):
             speed, strength, precision,caught = team1[i]
@@ -101,7 +104,28 @@ class  Game(mesa.Model):
             self.running = False
 
 
+def create_best_team(n_player):
+    """
+    Create the best team for the game
 
+    Args:
+        n_player (int): number of players in the team
+
+    Returns:
+        array: return a team with the best parameters
+    """
+    attribute = ['speed', 'strength', 'precision','caught']
+    n = len(attribute)
+    team = []
+    for j in range(n_player):
+            skill_list = []
+            for k in range(n):
+                skill =  2.3 #In a gaussian distribution, it corresponds to the top 1% of the distribution
+                skill_list.append(skill)
+            team.append(skill_list)
+
+    team_array = np.array(team)
+    return team_array
 
 def create_team(n_player):
     """
@@ -329,19 +353,38 @@ def plot(title,xlabel,ylabel,winner, loser):
 
 def run_batch():
     
-    n_simulation = 10
+    n_simulation = 50
     batchrunner = BatchRunner(Game, {'n_player': n_simulation * [6],"n_ball" : [1]},
                        model_reporters={"nb_of_players_team_1": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched ]),
                                         "nb_of_players_team_2": lambda x: sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched] ), 
-                                        "winner": lambda x: 1 if sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched]) > sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched]) else 2 if  sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched]) < sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched]) else 3,
-                                        "mean_speed_team_1": lambda x: np.mean([player.speed for player in x.schedule.agent_buffer() if player.is_player and not player.team]),
-                                        "mean_speed_team_2": lambda x: np.mean([player.speed for player in x.schedule.agent_buffer() if player.is_player and player.team]),
-                                        "mean_strength_team_1": lambda x: np.mean([player.strength for player in x.schedule.agent_buffer() if player.is_player and not player.team]),
-                                        "mean_strength_team_2": lambda x: np.mean([player.strength for player in x.schedule.agent_buffer() if player.is_player and player.team]),
-                                        "mean_precision_team_1": lambda x: np.mean([player.precision for player in x.schedule.agent_buffer() if player.is_player and not player.team]),
-                                        "mean_precision_team_2": lambda x: np.mean([player.precision for player in x.schedule.agent_buffer() if player.is_player and player.team]),
-                                        "mean_caught_team_1": lambda x: np.mean([player.caught for player in x.schedule.agent_buffer() if player.is_player and not player.team]),
-                                        "mean_caught_team_2": lambda x: np.mean([player.caught for player in x.schedule.agent_buffer() if player.is_player and player.team])
+                                        "winner": lambda x: 1 if sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched]) > sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched]) else 2 if  sum([1 for player in x.schedule.agent_buffer() if player.is_player and player.team and not player.touched]) < sum([1 for player in x.schedule.agent_buffer() if player.is_player and not player.team and not player.touched]) else 3,                                        
+                                        "max_caught_team_1": lambda x: np.max(x.team1[:,3]),
+                                        "max_caught_team_2": lambda x: np.max(x.team2[:,3]),
+                                        "min_caught_team_1": lambda x: np.min(x.team1[:,3]),
+                                        "min_caught_team_2": lambda x: np.min(x.team2[:,3]),
+                                        "mean_caught_team_1": lambda x: np.mean(x.team1[:,3]),
+                                        "mean_caught_team_2": lambda x: np.mean(x.team2[:,3]),
+                                        "mean_speed_team_1": lambda x: np.mean(x.team1[:,0]),
+                                        "mean_speed_team_2": lambda x: np.mean(x.team2[:,0]),
+                                        "mean_strength_team_1": lambda x: np.mean(x.team1[:,1]),
+                                        "mean_strength_team_2": lambda x: np.mean(x.team2[:,1]),
+                                        "mean_precision_team_1": lambda x: np.mean(x.team1[:,2]),
+                                        "mean_precision_team_2": lambda x: np.mean(x.team2[:,2]),
+                                        "max_speed_team_1": lambda x: np.max(x.team1[:,0]),
+                                        "max_speed_team_2": lambda x: np.max(x.team2[:,0]),
+                                        "max_strength_team_1": lambda x: np.max(x.team1[:,1]),
+                                        "max_strength_team_2": lambda x: np.max(x.team2[:,1]),
+                                        "max_precision_team_1": lambda x: np.max(x.team1[:,2]),
+                                        "max_precision_team_2": lambda x: np.max(x.team2[:,2]),
+                                        "min_speed_team_1": lambda x: np.min(x.team1[:,0]),
+                                        "min_speed_team_2": lambda x: np.min(x.team2[:,0]),
+                                        "min_strength_team_1": lambda x: np.min(x.team1[:,1]),
+                                        "min_strength_team_2": lambda x: np.min(x.team2[:,1]),
+                                        "min_precision_team_1": lambda x: np.min(x.team1[:,2]),
+                                        "min_precision_team_2": lambda x: np.min(x.team2[:,2])
+
+
+                                        
                                         })
 
 
@@ -407,5 +450,12 @@ if  __name__  ==  "__main__":
     #server.port = 8521
     #server.launch()
     
+<<<<<<< HEAD
+    
+    # run_single_server()
+    df=run_batch()
+    df.to_csv("data.csv")
+=======
     run_single_server()
     #df=run_batch()
+>>>>>>> 47bd4d7550c8ed4e1a3b21bd06d9fbdac709e54f
