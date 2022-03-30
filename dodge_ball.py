@@ -66,7 +66,7 @@ class  Game(mesa.Model):
         for  _  in  range(n_player):
             self.schedule.add(Player(random.random()  *  300,  random.random()  *  600,  25, False, 10, 0.75, 0.75, uuid.uuid1(), self))    
         for  _  in  range(n_ball):
-            self.schedule.add(Ball(random.random()  *  300,  random.random()  *  600,  5 , 0, uuid.uuid1(), self))    
+            self.schedule.add(Ball(random.random()  *  300,  random.random()  *  300,  5 , 0, random.random()<0.5 ,uuid.uuid1(), self))    
          
         
         self.datacollector = DataCollector(model_reporters={
@@ -80,7 +80,7 @@ class  Game(mesa.Model):
             self.running = False
 
 class Player(mesa.Agent):
-    def __init__(self, x, y, speed, team,strength,precision, caught, unique_id: int, model: Game):
+    def __init__(self, x, y, speed, team,strength, precision, caught, unique_id: int, model: Game):
         super().__init__(unique_id, model)
         self.pos = np.array([x, y])
         self.initial_speed = speed
@@ -95,6 +95,8 @@ class Player(mesa.Agent):
         self.touched = False
         self.caught = caught 
         self.has_ball = False
+        self.can_get_ball = False
+        self.ball_pos = None
 
         self.size = 7.5
         
@@ -107,6 +109,7 @@ class Player(mesa.Agent):
             
             color = "red" 
         
+
         portrayal = {"Shape": "circle",
                      "Layer": 1, 
                      "Color": color,
@@ -115,21 +118,42 @@ class Player(mesa.Agent):
 
     def step(self):
         
-        self.pos,self.facing= wander(self.pos[0], self.pos[1], self.facing ,self.speed, self.model, self.team)
+        if self.can_get_ball:
+            
+            u=self.ball_pos-self.pos
+            d=np.linalg.norm(u)
+            if d<self.speed:
+                self.pos=self.ball_pos
+                self.has_ball
+                self.can_get_ball = False
+
+            else: 
+
+                self.pos=self.pos+(u/d)*self.speed
+
+
+        elif self.has_ball :
+
+           pass
+
+        else: 
+            self.pos,self.facing= wander(self.pos[0], self.pos[1], self.facing ,self.speed, self.model, self.team)
+            
+            [setattr(self,"pos",self.pos+(2.1)*self.size*(self.pos - player.pos)/np.linalg.norm(self.pos - player.pos)) for player in self.model.schedule.agent_buffer() if np.linalg.norm(self.pos - player.pos)  < 16 and player != self ]
         
-        [setattr(self,"pos",self.pos+(2.1)*self.size*(self.pos - player.pos)/np.linalg.norm(self.pos - player.pos)) for player in self.model.schedule.agent_buffer() if np.linalg.norm(self.pos - player.pos)  < 16 and player != self ]
-        
+
         self.speed = self.initial_speed*math.exp(-self.model.schedule.steps/200)
         
 class Ball(mesa.Agent):
-    def __init__(self, x, y, width, speed, unique_id, model):
+    def __init__(self, x, y, width, speed, team ,unique_id, model):
         super().__init__(unique_id, model)
-        self.pos = np.array([x,y])
+        self.pos = np.array([x+300*team,y])
         self.model = model
         self.width = width
         self.is_player = False
         self.is_taken = False
-        self.on_ground = False
+        self.on_ground = True
+        self.team = team
         self.speed = speed
         self.destination = None
         
@@ -144,6 +168,17 @@ class Ball(mesa.Agent):
                      "Color": color,
                      "r": self.width}
         return portrayal
+
+
+    def step(self):
+
+        if self.on_ground:
+
+            player_distance=[[np.linalg.norm(player.pos-self.pos),player] for player in self.model.schedule.agent_buffer() if player.team==self.team and player!=self]
+            closest_player=min(player_distance,key=lambda x : x[0])[1]
+            setattr(closest_player,"can_get_ball",True)
+            setattr(closest_player,"ball_pos",self.pos)
+            print(closest_player)
         
 def run_single_server():
     
